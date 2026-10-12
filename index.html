@@ -234,7 +234,7 @@
         const text = await res.text();
         return { text, offline: false };
       } catch (err) {
-        const cache = await caches.open("zwift-cache3-v3");
+        const cache = await caches.open("zwift-cache3-v4");
         const cachedResponse = await cache.match(url);
         if (cachedResponse) {
           const text = await cachedResponse.text();
