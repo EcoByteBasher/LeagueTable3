@@ -43,32 +43,20 @@
       line-height: 1.2;
     }
 
-    /* Button container */
-    .button-container {
-      display: flex;
-      gap: 1rem;
-      margin: 1rem 0;
-    }
-
-    /* Buttons */
-    .action-btn {
+    /* Green button */
+    .rules-btn {
       background-color: green;
       color: white;
       border: none;
       border-radius: 5px;
       padding: 0.5rem 1rem;
       font-size: 1rem;
+      margin: 1rem 0;
       cursor: pointer;
       transition: background 0.2s;
     }
-    .action-btn:hover {
+    .rules-btn:hover {
       background-color: #006400; /* darker green */
-    }
-    .action-btn.secondary {
-      background-color: orange;
-    }
-    .action-btn.secondary:hover {
-      background-color: #e67e22;
     }
 
     /* Table */
@@ -88,9 +76,6 @@
     .table-container {
       overflow-x: auto;
       width: 100%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
     }
 
     /* Highlight rows */
@@ -107,8 +92,6 @@
       margin: 1rem 0;
       border-radius: 0.5rem;
       font-weight: bold;
-      width: 100%;
-      max-width: 800px;
     }
     .alert.offline {
       background-color: #fff3cd;
@@ -134,7 +117,7 @@
 
     /* Modal (popup) */
     .modal {
-      display: none;
+      display: none; /* hidden by default */
       position: fixed;
       top: 0;
       left: 0;
@@ -153,8 +136,10 @@
       border-radius: 8px;
       text-align: left;
       position: relative;
-      max-height: 80vh;
-      overflow-y: auto;
+
+      /* NEW: make modal scrollable if content is long */
+      max-height: 80vh;    /* take up at most 80% of viewport height */
+      overflow-y: auto;    /* scroll inside the modal if too tall */
     }
     .modal-content h3 {
       margin-top: 0;
@@ -180,38 +165,31 @@
     <img src="rmacc-512.png" alt="RMACC Logo">
     <div>
       <h1>RMACC Zwift Club</h1>
-      <h2>RMACC Le Tour d'Hiver</h2>
+      <h2>RMACC March '26 Mini Series</h2>
     </div>
   </header>
 
-  <!-- Controls / Buttons -->
-  <div class="button-container">
-    <button class="action-btn" id="toggleViewBtn">Switch to GC Table</button>
-    <button class="action-btn secondary" id="rulesBtn">Scoring system</button>
-  </div>
+  <!-- New Rules button -->
+  <button class="rules-btn" id="rulesBtn">Scoring system</button>
 
   <!-- Modal structure -->
   <div class="modal" id="rulesModal">
     <div class="modal-content">
-      <h3>Scoring</h3>
+      <h3>Points</h3>
       <p>
-        <b>Finish points:</b> All riders completing an event will earn 5 points, plus 1 point for each rider finishing behind you.
+        <b>Finish points:</b> All riders completing an event will earn 6 points.
       </p>
       <p>
-        <b>Podium bonus points:</b> In addition, 3 points, 2 points and 1 point will be awarded for 1st, 2nd and 3rd place respectively.
+        <b>Race points:</b> In addition, all finishers will earn 1 point for every rider that finishes behind you. Example: 10 riders finish, you are second. You earn 6 finish points + 8 race points, total 14 points.
       </p>
       <p>
-        <b>General Classification:</b> All riders are also in the GC. Your event finish times will accumulate. If you miss an event, your time will be that of the slowest finisher in that event. The winner of the GC will be the rider with the lowest overall time at the end of the series.
-      </p>
-      <p>
-        League tables for both the GC and Points competitions are available.
+        <b>Events Bonus points:</b> All riders completing all 4 events will earn a fixed 5 points.
       </p>
       <button class="modal-close" id="closeModal">Close</button>
     </div>
   </div>
 
   <div class="table-container">
-    <h3 id="table-title" style="color: #333; margin-top: 0;">Points Table</h3>
     <table id="league-table">
       <thead></thead>
       <tbody></tbody>
@@ -219,21 +197,14 @@
   </div>
 
   <script>
-    // URL of CSV export of Google spreadsheet, 1 for each sheet
-    const POINTS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSVnw2KKM6Nq2GdqNgQsDB6kt_pEKW5wzPXg_hyljv7At5-mhVULozttX6BDj98EQ/pub?gid=676828797&single=true&output=csv";
-    const GC_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSVnw2KKM6Nq2GdqNgQsDB6kt_pEKW5wzPXg_hyljv7At5-mhVULozttX6BDj98EQ/pub?gid=1326660133&single=true&output=csv"
-
-    let currentView = "points"; // 'points' or 'gc'
-    let pointsData = null;
-    let gcData = null;
-
+    const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSNc7CS5h574-Y6hQzHTrkfHqVkqsZyfbzFHeb0jxqy-UDAC9ltjcJiwGY-EZ1kAw/pub?output=csv";
     async function fetchCSV(url) {
       try {
         const res = await fetch(url);
         const text = await res.text();
         return { text, offline: false };
       } catch (err) {
-        const cache = await caches.open("zwift-cache3-v3");
+        const cache = await caches.open("zwift-cache2-v2");
         const cachedResponse = await cache.match(url);
         if (cachedResponse) {
           const text = await cachedResponse.text();
@@ -248,45 +219,25 @@
       return text.trim().split(/\r?\n/).map(r => r.split(","));
     }
 
-    function renderTable() {
+    function renderTable(data) {
       const table = document.getElementById("league-table");
       const thead = table.querySelector("thead");
       const tbody = table.querySelector("tbody");
-      const titleEl = document.getElementById("table-title");
       thead.innerHTML = "";
       tbody.innerHTML = "";
 
-      const rawData = currentView === "points" ? pointsData : gcData;
-      if (!rawData) return;
-
-      titleEl.textContent = currentView === "points" ? "Points Table" : "General Classification (GC) Table";
-
       const headerRow = document.createElement("tr");
-      rawData[0].forEach(h => {
+      data[0].forEach(h => {
         const th = document.createElement("th");
         th.textContent = h;
         headerRow.appendChild(th);
       });
       thead.appendChild(headerRow);
 
-      let rows = rawData.slice(1);
-
-      if (currentView === "points") {
-        const pointsIndex = rawData[0].findIndex(h => /points/i.test(h));
-        if (pointsIndex >= 0) {
-          rows.sort((a, b) => parseInt(b[pointsIndex] || 0) - parseInt(a[pointsIndex] || 0));
-        }
-      } else {
-        // GC View: Sort by cumulative time ascending (lowest overall time wins)
-        // Looks for a column header containing "cumulative" or "total" or checks the last column
-        let timeIndex = rawData[0].findIndex(h => /cumulative|total time/i.test(h));
-        if (timeIndex === -1) timeIndex = rawData[0].length - 1; // fallback to last column
-        
-        rows.sort((a, b) => {
-          const timeA = a[timeIndex] || "99:99:99";
-          const timeB = b[timeIndex] || "99:99:99";
-          return timeA.localeCompare(timeB);
-        });
+      let rows = data.slice(1);
+      const pointsIndex = data[0].findIndex(h => /points/i.test(h));
+      if (pointsIndex >= 0) {
+        rows.sort((a, b) => parseInt(b[pointsIndex]) - parseInt(a[pointsIndex]));
       }
 
       rows.forEach((row, i) => {
@@ -328,43 +279,14 @@
       container.prepend(msgDiv);
     }
 
-    // Initial Data Load
-    async function loadData() {
-      try {
-        const pointsRes = await fetchCSV(POINTS_CSV_URL);
-        pointsData = parseCSV(pointsRes.text);
-        
-        // Try loading GC, handle gracefully if the URL hasn't been configured yet
-        try {
-          const gcRes = await fetchCSV(GC_CSV_URL);
-          gcData = parseCSV(gcRes.text);
-        } catch (e) {
-          gcData = [["Rider", "Event 1", "Cumulative Time", "Gap"], ["No GC Data yet", "-", "-", "-"]];
-        }
-
-        renderTable();
-        if (pointsRes.offline) {
-          showMessage("⚠️ Offline mode: showing last saved table.", "offline");
-        }
-      } catch (err) {
+    fetchCSV(CSV_URL)
+      .then(({ text, offline }) => {
+        renderTable(parseCSV(text));
+        if (offline) showMessage("⚠️ Offline mode: showing last saved table.", "offline");
+      })
+      .catch(() => {
         showMessage("❌ No data available. Please connect to the internet.", "error");
-      }
-    }
-
-    loadData();
-
-    // Toggle Button Logic
-    const toggleBtn = document.getElementById("toggleViewBtn");
-    toggleBtn.onclick = () => {
-      if (currentView === "points") {
-        currentView = "gc";
-        toggleBtn.textContent = "Switch to Points Table";
-      } else {
-        currentView = "points";
-        toggleBtn.textContent = "Switch to GC Table";
-      }
-      renderTable();
-    };
+      });
 
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("service-worker.js");
@@ -381,3 +303,4 @@
   </script>
 </body>
 </html>
+
