@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RMACC Zwift Club</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="rmacc-192.png" type="image/png">
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: white;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1rem;
+    }
+
+    header {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    header img {
+      height: 60px;
+      margin-right: 1rem;
+    }
+
+    h1 {
+      color: green;
+      font-size: 2rem;
+      margin: 0;
+    }
+
+    h2 {
+      color: orange;
+      font-size: 0.95rem;
+      margin: 0;
+      line-height: 1.2;
+    }
+
+    /* Button container */
+    .button-container {
+      display: flex;
+      gap: 1rem;
+      margin: 1rem 0;
+    }
+
+    /* Buttons */
+    .action-btn {
+      background-color: green;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .action-btn:hover {
+      background-color: #006400; /* darker green */
+    }
+    .action-btn.secondary {
+      background-color: orange;
+    }
+    .action-btn.secondary:hover {
+      background-color: #e67e22;
+    }
+
+    /* Table */
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      max-width: 800px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 0.5rem;
+      text-align: left;
+    }
+    tr:nth-child(odd) {
+      background-color: #f9f9f9;
+    }
+    .table-container {
+      overflow-x: auto;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* Highlight rows */
+    .gold { background-color: #ffd700 !important; font-weight: bold; }
+    .silver { background-color: #c0c0c0 !important; font-weight: bold; }
+    .bronze { background-color: #cd7f32 !important; font-weight: bold; }
+    .cup-icon { margin-right: 0.4rem; font-size: 1.2rem; }
+    .nowrap { white-space: nowrap; display: inline-block; }
+
+    /* Alerts */
+    .alert {
+      position: relative;
+      padding: 0.75rem 2rem 0.75rem 1rem;
+      margin: 1rem 0;
+      border-radius: 0.5rem;
+      font-weight: bold;
+      width: 100%;
+      max-width: 800px;
+    }
+    .alert.offline {
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeeba;
+    }
+    .alert.error {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    .alert .close-btn {
+      position: absolute;
+      top: 0.25rem;
+      right: 0.5rem;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: bold;
+      color: inherit;
+      background: none;
+      border: none;
+    }
+
+    /* Modal (popup) */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.6);
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    .modal-content {
+      background: white;
+      padding: 1rem;
+      max-width: 600px;
+      width: 90%;
+      border-radius: 8px;
+      text-align: left;
+      position: relative;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    .modal-content h3 {
+      margin-top: 0;
+      color: green;
+    }
+    .modal-close {
+      background: green;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      margin-top: 1rem;
+      float: right;
+    }
+    .modal-close:hover {
+      background: #006400;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="rmacc-512.png" alt="RMACC Logo">
+    <div>
+      <h1>RMACC Zwift Club</h1>
+      <h2>RMACC Le Tour d'Hiver</h2>
+    </div>
+  </header>
+
+  <!-- Controls / Buttons -->
+  <div class="button-container">
+    <button class="action-btn" id="toggleViewBtn">Switch to GC Table</button>
+    <button class="action-btn secondary" id="rulesBtn">Scoring system</button>
+  </div>
+
+  <!-- Modal structure -->
+  <div class="modal" id="rulesModal">
+    <div class="modal-content">
+      <h3>Scoring</h3>
+      <p>
+        <b>Finish points:</b> All riders completing an event will earn 5 points, plus 1 point for each rider finishing behind you.
+      </p>
+      <p>
+        <b>Podium bonus points:</b> In addition, 3 points, 2 points and 1 point will be awarded for 1st, 2nd and 3rd place respectively.
+      </p>
+      <p>
+        <b>General Classification:</b> All riders are also in the GC. Your event finish times will accumulate. If you miss an event, your time will be that of the slowest finisher in that event. The winner of the GC will be the rider with the lowest overall time at the end of the series.
+      </p>
+      <p>
+        League tables for both the GC and Points competitions are available.
+      </p>
+      <button class="modal-close" id="closeModal">Close</button>
+    </div>
+  </div>
+
+  <div class="table-container">
+    <h3 id="table-title" style="color: #333; margin-top: 0;">Points Table</h3>
+    <table id="league-table">
+      <thead></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script>
+    // URL of CSV export of Google spreadsheet, 1 for each sheet
+    const POINTS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSVnw2KKM6Nq2GdqNgQsDB6kt_pEKW5wzPXg_hyljv7At5-mhVULozttX6BDj98EQ/pub?gid=676828797&single=true&output=csv";
+    const GC_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSVnw2KKM6Nq2GdqNgQsDB6kt_pEKW5wzPXg_hyljv7At5-mhVULozttX6BDj98EQ/pub?gid=1326660133&single=true&output=csv"
+
+    let currentView = "points"; // 'points' or 'gc'
+    let pointsData = null;
+    let gcData = null;
+
+    async function fetchCSV(url) {
+      try {
+        const res = await fetch(url);
+        const text = await res.text();
+        return { text, offline: false };
+      } catch (err) {
+        const cache = await caches.open("zwift-cache3-v3");
+        const cachedResponse = await cache.match(url);
+        if (cachedResponse) {
+          const text = await cachedResponse.text();
+          return { text, offline: true };
+        } else {
+          throw new Error("No cached data");
+        }
+      }
+    }
+
+    function parseCSV(text) {
+      return text.trim().split(/\r?\n/).map(r => r.split(","));
+    }
+
+    function renderTable() {
+      const table = document.getElementById("league-table");
+      const thead = table.querySelector("thead");
+      const tbody = table.querySelector("tbody");
+      const titleEl = document.getElementById("table-title");
+      thead.innerHTML = "";
+      tbody.innerHTML = "";
+
+      const rawData = currentView === "points" ? pointsData : gcData;
+      if (!rawData) return;
+
+      titleEl.textContent = currentView === "points" ? "Points Table" : "General Classification (GC) Table";
+
+      const headerRow = document.createElement("tr");
+      rawData[0].forEach(h => {
+        const th = document.createElement("th");
+        th.textContent = h;
+        headerRow.appendChild(th);
+      });
+      thead.appendChild(headerRow);
+
+      let rows = rawData.slice(1);
+
+      if (currentView === "points") {
+        const pointsIndex = rawData[0].findIndex(h => /points/i.test(h));
+        if (pointsIndex >= 0) {
+          rows.sort((a, b) => parseInt(b[pointsIndex] || 0) - parseInt(a[pointsIndex] || 0));
+        }
+      } else {
+        // GC View: Sort by cumulative time ascending (lowest overall time wins)
+        // Looks for a column header containing "cumulative" or "total" or checks the last column
+        let timeIndex = rawData[0].findIndex(h => /cumulative|total time/i.test(h));
+        if (timeIndex === -1) timeIndex = rawData[0].length - 1; // fallback to last column
+        
+        rows.sort((a, b) => {
+          const timeA = a[timeIndex] || "99:99:99";
+          const timeB = b[timeIndex] || "99:99:99";
+          return timeA.localeCompare(timeB);
+        });
+      }
+
+      rows.forEach((row, i) => {
+        const tr = document.createElement("tr");
+        row.forEach(cell => {
+          const td = document.createElement("td");
+          td.textContent = cell;
+          tr.appendChild(td);
+        });
+
+        if (i === 0) {
+          tr.classList.add("gold");
+          tr.firstChild.innerHTML = '<span class="nowrap"><span class="cup-icon">🏆</span>' + tr.firstChild.textContent + '</span>';
+        } else if (i === 1) {
+          tr.classList.add("silver");
+          tr.firstChild.innerHTML = '<span class="nowrap"><span class="cup-icon">🥈</span>' + tr.firstChild.textContent + '</span>';
+        } else if (i === 2) {
+          tr.classList.add("bronze");
+          tr.firstChild.innerHTML = '<span class="nowrap"><span class="cup-icon">🥉</span>' + tr.firstChild.textContent + '</span>';
+        }
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    function showMessage(msg, type = "error") {
+      const container = document.querySelector(".table-container");
+      container.querySelectorAll(".alert").forEach(el => el.remove());
+      const msgDiv = document.createElement("div");
+      msgDiv.classList.add("alert", type);
+      const textSpan = document.createElement("span");
+      textSpan.textContent = msg;
+      const closeBtn = document.createElement("button");
+      closeBtn.classList.add("close-btn");
+      closeBtn.innerHTML = "✖";
+      closeBtn.onclick = () => msgDiv.remove();
+      msgDiv.appendChild(textSpan);
+      msgDiv.appendChild(closeBtn);
+      container.prepend(msgDiv);
+    }
+
+    // Initial Data Load
+    async function loadData() {
+      try {
+        const pointsRes = await fetchCSV(POINTS_CSV_URL);
+        pointsData = parseCSV(pointsRes.text);
+        
+        // Try loading GC, handle gracefully if the URL hasn't been configured yet
+        try {
+          const gcRes = await fetchCSV(GC_CSV_URL);
+          gcData = parseCSV(gcRes.text);
+        } catch (e) {
+          gcData = [["Rider", "Event 1", "Cumulative Time", "Gap"], ["No GC Data yet", "-", "-", "-"]];
+        }
+
+        renderTable();
+        if (pointsRes.offline) {
+          showMessage("⚠️ Offline mode: showing last saved table.", "offline");
+        }
+      } catch (err) {
+        showMessage("❌ No data available. Please connect to the internet.", "error");
+      }
+    }
+
+    loadData();
+
+    // Toggle Button Logic
+    const toggleBtn = document.getElementById("toggleViewBtn");
+    toggleBtn.onclick = () => {
+      if (currentView === "points") {
+        currentView = "gc";
+        toggleBtn.textContent = "Switch to Points Table";
+      } else {
+        currentView = "points";
+        toggleBtn.textContent = "Switch to GC Table";
+      }
+      renderTable();
+    };
+
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("service-worker.js");
+    }
+
+    // Modal logic
+    const modal = document.getElementById("rulesModal");
+    const btn = document.getElementById("rulesBtn");
+    const closeBtn = document.getElementById("closeModal");
+
+    btn.onclick = () => { modal.style.display = "flex"; };
+    closeBtn.onclick = () => { modal.style.display = "none"; };
+    window.onclick = (e) => { if (e.target === modal) modal.style.display = "none"; };
+  </script>
+</body>
+</html>
